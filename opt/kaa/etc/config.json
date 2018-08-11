@@ -1,0 +1,44 @@
+{
+  "hx":{
+    "host": "1.2.3.4",
+    "port": 3000,
+    "user": "api_analyst",
+    "password": "api_analyst_password",
+    "dst": {
+      "root": "/data/fireeye/hx/download/",
+      "tempdir": "/tmp/"
+    },
+    "http_listener": {
+      "address": "0.0.0.0",
+      "port": 8000,
+      "secure": 1,
+      "certfile": "hx_certfile.pem"
+    },
+    "redis": {
+    "host": "localhost",
+    "db": 0,
+    "port": 6379,
+    "password": "null",
+    "set": "acquisitions"
+  },
+    "debug": {
+      "enabled": 0
+    }
+  },
+  "ax" : {
+    "host": "1.2.3.4",
+    "user": "api_analyst",
+    "password": "api_analyst_password",
+    "directory": "/data/fireye/ax/download",
+    "tempdir": "/tmp/",
+    "http_listener": {
+      "port": 8001,
+      "address": "0.0.0.0",
+      "secure": 1,
+      "certfile": "ax_certfile.pem"
+    },
+    "debug": {
+      "enabled": 0
+    }
+  }
+}
