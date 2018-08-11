@@ -14,6 +14,6 @@ The FireEye AX is a standalone malware analysys appliance that be fed suspicios 
 **artfefact_downloader.py** will download any malware files identified by the AX system.
 
 ## Installation & configuration
-* root directory: **/opt/kaa** with the following subfolders: **/bin** **/etc** **/etc/systemd**
+* root directory: **/opt/kaa** with the following subfolders: **/bin**, **/etc**, **/etc/systemd**
 * systemd unit files can be found under the **etc/systemd** directory
 * all the configuration options are in the **etc/config.json** and are pretty self-explanatory
