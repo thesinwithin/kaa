@@ -1,0 +1,13 @@
+[Unit]
+Description=KAA: HX Alert Manager
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/kaa
+ExecStart=/opt/kaa/bin/hx_alert_manager.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+

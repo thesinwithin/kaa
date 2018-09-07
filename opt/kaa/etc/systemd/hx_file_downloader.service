@@ -1,0 +1,13 @@
+[Unit]
+Description=KAA: HX File Downloader
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/kaa
+ExecStart=/opt/kaa/bin/hx_file_downloader.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+

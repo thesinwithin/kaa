@@ -25,6 +25,7 @@
 #   The key MUST NOT have a password set.
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from socketserver import ThreadingMixIn
 import json
 import urllib3
 import base64
@@ -39,16 +40,16 @@ HX_HOST = cfg['hx']['host']
 HX_PORT = cfg['hx']['port']
 HX_API_USER = cfg['hx']['user']
 HX_API_PASS = cfg['hx']['password']
-DST_ROOT = cfg['dst']['root']
-REDIS_HOST = cfg['redis']['host']
-REDIS_PORT = cfg['redis']['port']
-REDIS_PASSWORD = cfg['redis']['password']
-REDIS_DB = cfg['redis']['db']
-REDIS_SET = cfg['redis']['set']
-HTTP_ADDRESS = cfg['http_listener']['address']
-HTTP_PORT = cfg['http_listener']['port']
-HTTP_SECURE = cfg['http_listener']['secure']
-HTTP_CERT = cfg['http_listener']['certfile']
+DST_ROOT = cfg['hx']['dst']['root']
+REDIS_HOST = cfg['hx']['redis']['host']
+REDIS_PORT = cfg['hx']['redis']['port']
+REDIS_PASSWORD = cfg['hx']['redis']['password']
+REDIS_DB = cfg['hx']['redis']['db']
+REDIS_SET = cfg['hx']['redis']['set']
+HTTP_ADDRESS = cfg['hx']['http_listener']['address']
+HTTP_PORT = cfg['hx']['http_listener']['port']
+HTTP_SECURE = cfg['hx']['http_listener']['secure']
+HTTP_CERT = cfg['hx']['http_listener']['certfile']
 
 if cfg['debug']['enabled'] == 1:
     DEBUG=True
@@ -89,9 +90,9 @@ def request_acquisition(full_path, f_name, agent_id):
         )
     except urllib3.exceptions.MaxRetryError as e:
         syslog.syslog(syslog.LOG_ERR, f'[ERR]: api_token_request: Could not connect to the HX system: {e}')
-        raise Exception('[ERR]: api_token_request: Could not connect to the HX system: {e}')
+        raise Exception(f'[ERR]: api_token_request: Could not connect to the HX system: {e}')
     try:
-        if r.status == 200:
+        if r.status == 204:
 			fe_api_token = r.headers['X-FeApi-Token']
 				if DEBUG:
 					syslog.syslog(syslog.LOG_DEBUG,f'[DBG]: API token received: {fe_api_token}')
@@ -107,7 +108,6 @@ def request_acquisition(full_path, f_name, agent_id):
                     'X-FeApi-Token': fe_api_token,
                     'Content-Type': 'application/json'
                 },
-                body=json.dumps(acq)
             )
 		if r.status == 200:
 			response = json.loads(r.data.decode('UTF-8'))
@@ -115,6 +115,9 @@ def request_acquisition(full_path, f_name, agent_id):
         	redis.sadd(REDIS_SET,download_url[22:])
    		 else:
 			syslog.syslog(syslog.LOG_ERR,'[ERR]: Error getting the download URL for file.')
+
+class ThreadedHTTPServer(HTTPServer, ThreadingMixIn):
+	pass
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
@@ -145,7 +148,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
 syslog.syslog(syslog.LOG_INFO,f'[INF]: Application started from {os.path.dirname(os.path.abspath(__file__))}')
 
-httpd = HTTPServer((HTTP_ADDRESS, HTTP_PORT), SimpleHTTPRequestHandler)
+httpd = ThreadedHTTPServer((HTTP_ADDRESS, HTTP_PORT), SimpleHTTPRequestHandler)
 if HTTP_SECURE == 1:
     httpd.socket = ssl.wrap_socket(sock=httpd.socket,certfile=HTTP_CERT,server_side=True,ssl_version=ssl.PROTOCOL_TLSv1_2)
 httpd.serve_forever()
