@@ -1,6 +1,23 @@
 #!/usr/bin/python3
 
 # (c) 2018 by sin@imacandi.net - All rights reserved.
+#
+#
+# All the files must be installed under /opt/kaa/
+#   - /bin/ -> all the .py files
+#   - /etc/ -> config.json
+#
+# What:
+#   hx_file_downloader checks periodically if any downloads are pending,
+#   then checks if the file acquisitions have completed and if yes,
+#   downloads and extract the file
+#
+# Dependencies:
+#   - Python 3.6 or above
+#   - python libraries: http.server, pprint, json, urllib3, base64, redis
+#   - Redis 4.0 or higher
+#
+# Supported operating system: Ubuntu 18.04 LTS
 
 import redis as redislib
 import urllib3
@@ -26,11 +43,6 @@ REDIS_PORT = cfg['redis']['port']
 REDIS_PASSWORD = cfg['redis']['password']
 REDIS_DB = cfg['redis']['db']
 REDIS_SET = cfg['redis']['set']
-HTTP_ADDRESS = cfg['hx']['http_listener']['address']
-HTTP_PORT = cfg['hx']['http_listener']['port']
-HTTP_SECURE = cfg['hx']['http_listener']['secure']
-if HTTP_SECURE == 1:
-    HTTP_CERT = ''.join(['/opt/kaa/etc/tls/',cfg['hx']['http_listener']['certfile']])
 if cfg['hx']['debug']['enabled'] == 1:
     DEBUG=True
 else:

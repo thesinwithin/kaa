@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-# (c) 2018 by sin@imacandi.net - All rights reserved
+# (c) 2018 by sin@imacandi.net - All rights reserved.
 #
 #
 # All the files must be installed under /opt/kaa/
@@ -8,7 +8,7 @@
 #   - /etc/ -> config.json
 #
 # What:
-#   alert_manager listens for log messages POSTed by the HX system
+#   hx_alert_manager listens for log messages POSTed by the HX system
 #   and will initiate file acquisitions for identified malicious files
 #
 # Dependencies:
