@@ -38,15 +38,21 @@ HX_API_PASS = cfg['hx']['password']
 CHECK_INTERVAL = cfg['hx']['interval']
 DST_ROOT = cfg['hx']['dst']['root']
 TEMPDIR = cfg['hx']['dst']['tempdir']
-REDIS_HOST = cfg['redis']['host']
-REDIS_PORT = cfg['redis']['port']
-REDIS_PASSWORD = cfg['redis']['password']
-REDIS_DB = cfg['redis']['db']
-REDIS_SET = cfg['redis']['set']
+REDIS_HOST = cfg['hx']['redis']['host']
+REDIS_PORT = cfg['hx']['redis']['port']
+REDIS_PASSWORD = cfg['hx']['redis']['password']
+REDIS_DB = cfg['hx']['redis']['db']
+REDIS_SET = cfg['hx']['redis']['set']
+HTTP_ADDRESS = cfg['hx']['http_listener']['address']
+HTTP_PORT = cfg['hx']['http_listener']['port']
+HTTP_SECURE = cfg['hx']['http_listener']['secure']
+if HTTP_SECURE == 1:
+    HTTP_CERT = ''.join(['/opt/kaa/etc/tls/',cfg['hx']['http_listener']['certfile']])
 if cfg['hx']['debug']['enabled'] == 1:
     DEBUG=True
 else:
     DEBUG=False
+
 
 syslog.openlog(logoption=syslog.LOG_PID)
 
@@ -72,6 +78,7 @@ hx = urllib3.HTTPSConnectionPool(
     )
 
 def download_file(fid):
+    d_s = 1
     try:
         r = hx.request(
             'GET',
@@ -127,18 +134,31 @@ def download_file(fid):
                         if not zipdata:
                             break
                         outfile.write(zipdata)
+                        syslog.syslog(syslog.LOG_ERR, f'downloaded {fid}')
+                d_s = 0
             except Exception as e:
-                syslog.syslog(syslog.LOG_ERR,f'[ERR]: save_zip_to_disk: Error occured for FID {fid}: {e}')
+                syslog.syslog(syslog.LOG_ERR,f'[ERR]: zip_save_to_disk: Error occured for FID {fid}: {e}')
             try:
                 with zipfile.ZipFile(f'{TEMPDIR}/{fid}.zip') as zf:
                     if f'{file}_' in zf.namelist():
-                        zf.extract(f'{file}_', path=TEMPDIR, pwd=bytes(zip_password,encoding='UTF-8'))
+                        syslog.syslog(syslog.LOG_ERR, f'{TEMPDIR} - {fid} - {file}_')
+                        zf.extract(f'{file}_', path=f'{TEMPDIR}/', pwd=bytes(zip_password,encoding='UTF-8'))
                         os.remove(f'{TEMPDIR}/{fid}.zip')
                         os.rename(f'{TEMPDIR}/{file}_', f'{TEMPDIR}/{fid}_{file}')
-                        shutil.move(f'{TEMPDIR}/{file}', f'{DST_ROOT}/{fid}_{file}')
+                        syslog.syslog(syslog.LOG_ERR, f'{TEMPDIR} - {fid} - {file}')
+                        # copy the file in all the SRC folders that will be inspected by the AX system
+                        # this is done in order to ensure that a potentially malicious file is passed
+                        # thtough all the available operating systems supported by the AX
+                        shutil.copy(f'{TEMPDIR}/{fid}_{file}', f'{DST_ROOT}/osx10_13/{fid}_{file}')
+                        shutil.copy(f'{TEMPDIR}/{fid}_{file}', f'{DST_ROOT}/osx10_8/{fid}_{file}')
+                        shutil.copy(f'{TEMPDIR}/{fid}_{file}', f'{DST_ROOT}/win10x64m/{fid}_{file}')
+                        shutil.copy(f'{TEMPDIR}/{fid}_{file}', f'{DST_ROOT}/win7sp1m/{fid}_{file}')
+                        shutil.copy(f'{TEMPDIR}/{fid}_{file}', f'{DST_ROOT}/win7x64sp1m/{fid}_{file}')
+                        shutil.copy(f'{TEMPDIR}/{fid}_{file}', f'{DST_ROOT}/winxpsp1m/{fid}_{file}')
+                        os.remove(f'{TEMPDIR}/{fid}_{file}')
                     else:
                         os.remove(f'{TEMPDIR}/{fid}.zip')
-                        syslog.syslog(syslog.LOG_INFO,f'[INF]: extract_acquisition_file: Acquisition FID {fid} did not contain the file {file}.')
+                        syslog.syslog(syslog.LOG_INFO,f'[INF]: extract_acquisition_file: Acquisition for FID {fid} did not contain the file {file}.')
             except Exception as e:
                 syslog.syslog(syslog.LOG_ERR,f'[ERR]: unzip_acquisition_file: Acquisition for FID {fid} was not successful: {e}')
     try:
@@ -151,21 +171,28 @@ def download_file(fid):
         )
     except Exception as e:
         syslog.syslog(syslog.LOG_ERR,f'[ERR]: hx_session_cleanup: Error cleaning up the API session: {e}')
-
+    return d_s
 syslog.syslog(syslog.LOG_INFO,f'[INF]: Application started from {os.path.dirname(os.path.abspath(__file__))}')
 
 while True:
     fids = redis.smembers(REDIS_SET)
     if len(fids) > 0:
         for fid in sorted(fids):
+            # if _stop_ is found as a FID, the downloader will exit gracefully
+            # this is done in order to ensure that you don't stop the program mid-download
             if fid == b'stop':
                 syslog.syslog(syslog.LOG_INFO,'[INF]: FID "stop" found. Exiting cleanly.')
                 syslog.closelog()
                 redis.srem(REDIS_SET,'stop')
                 exit(0)
             try:
-                download_file(fid=int(fid))
-                dl_status = 0
+                res = download_file(fid=int(fid))
+                # if 0 = the download completed successfuly
+                # if 1 = the download failed and you should check the logs to see why
+                if res == 0:
+                    dl_status = 0
+                else:
+                    dl_status = 1
             except Exception as e:
                 syslog.syslog(syslog.LOG_ERR,f'[ERR]: download_file: Exception encountered: {e}')
                 dl_status = 1
